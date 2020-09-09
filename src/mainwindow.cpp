@@ -18,6 +18,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <QSettings>
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QDialog(parent)
@@ -33,6 +35,8 @@ MainWindow::MainWindow(QWidget *parent)
     dm = new LogcatDataModel(this);
     fm->setSourceModel(dm);
 
+    loadSettings();
+
     connect(qApp, &QCoreApplication::aboutToQuit, this, &MainWindow::onAboutToQuit);
     connect(fm, &LogcatFilterProxy::rowsInserted, this, &MainWindow::onRowsInserted);
     connect(dm, &LogcatDataModel::dataChanged, fm, &LogcatFilterProxy::invalidate);
@@ -45,8 +49,42 @@ MainWindow::~MainWindow()
 }
 
 
+static const auto app_name_str = QStringLiteral("qLogcat");
+static const auto app_pos_str = QStringLiteral("pos");
+static const auto app_size_str = QStringLiteral("size");
+static const auto log_autoscroll_str = QStringLiteral("log_autoscroll");
+static const auto log_col_width_str = QStringLiteral("log_column_widths");
+
+
+void MainWindow::loadSettings()
+{
+    auto s = QSettings(QSettings::IniFormat, QSettings::UserScope, app_name_str, app_name_str);
+
+    s.beginGroup(QStringLiteral("MainWindow"));
+    move(s.value(app_pos_str, QPoint(200, 200)).toPoint());
+    resize(s.value(app_size_str, QSize(800, 600)).toSize());
+    ui->autoscrollFlag->setChecked(s.value(log_autoscroll_str, false).toBool());
+    ui->tableView->horizontalHeader()->restoreState(s.value(log_col_width_str).toByteArray());
+    s.endGroup();
+}
+
+
+void MainWindow::saveSettings() const
+{
+    auto s = QSettings(QSettings::IniFormat, QSettings::UserScope, app_name_str, app_name_str);
+
+    s.beginGroup(QStringLiteral("MainWindow"));
+    s.setValue(app_pos_str, pos());
+    s.setValue(app_size_str, size());
+    s.setValue(log_autoscroll_str, ui->autoscrollFlag->isChecked());
+    s.setValue(log_col_width_str, ui->tableView->horizontalHeader()->saveState());
+    s.endGroup();
+}
+
+
 void MainWindow::onAboutToQuit()
 {
+    saveSettings();
     if (dm) { dm->tearDown(); }
 }
 

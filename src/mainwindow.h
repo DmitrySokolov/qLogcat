@@ -36,6 +36,10 @@ class MainWindow : public QDialog
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+  protected:
+    void loadSettings();
+    void saveSettings() const;
+
   private slots:
     void onAboutToQuit();
     void onRowsInserted(const QModelIndex &parent, int first, int last);
