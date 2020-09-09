@@ -184,7 +184,7 @@ std::tuple<QString, QStringList> LogcatDataModel::logcatCommand() const
 {
     return {
         QString("%1/platform-tools/adb%2").arg(QProcessEnvironment::systemEnvironment().value(SDK_ROOT), APP_SUFFIX),
-        {QStringLiteral("shell"), QStringLiteral("logcat"), QStringLiteral("-b"), QStringLiteral("default,events")}
+        {QStringLiteral("shell"), QStringLiteral("logcat"), QStringLiteral("-b"), QStringLiteral("main,system,crash,events")}
     };
 }
 
@@ -208,44 +208,40 @@ void LogcatDataModel::updateLogcatProcessList(const QVector<int>& pids)
 
     static const auto re = std::regex(R"(^(\S+)\s+(\d+)\s+(\d+)\s+(.+)$)");
 
-    ps.setReadChannel(QProcess::StandardOutput);
-    auto stream = QTextStream(&ps);
-    while (! stream.atEnd()) {
+    auto parse_data = [](auto&& line, const auto& re) -> std::tuple<LogcatProcessInfo_t, std::smatch> {
         std::smatch match;
-        auto line = stream.readLine().toStdString();
         if (std::regex_match(line, match, re)) {
             auto rec = LogcatProcessInfo_t {
-                line,
+                std::move(line),
                 {match.position(1), match.length(1)},
                 {match.position(2), match.length(2)},
                 {match.position(3), match.length(3)},
                 {match.position(4), match.length(4)}
             };
-            auto pid = std::stoi(match.str(2));
-            auto it = logcat_proc_list_.find(pid);
-            if (it == logcat_proc_list_.end()) {
-                logcat_proc_list_.emplace(pid, rec);
-            } else {
-                it->second = rec;
-            }
+            return { std::move(rec), std::move(match) };
+        }
+        return { {}, std::move(match) };
+    };
+
+    ps.setReadChannel(QProcess::StandardOutput);
+    auto stream = QTextStream(&ps);
+    while (! stream.atEnd()) {
+        auto [rec, match] = parse_data(stream.readLine().toStdString(), re);
+        if (rec.raw_data.size() <= 0) { continue; }
+        auto pid = std::stoi(match.str(2));
+        auto it = logcat_proc_list_.find(pid);
+        if (it == logcat_proc_list_.end()) {
+            logcat_proc_list_.emplace(pid, rec);
+        } else {
+            it->second = rec;
         }
     }
 
     for (auto pid: pids) {
         auto it = logcat_proc_list_.find(pid);
         if (it == logcat_proc_list_.end()) {
-            std::smatch match;
-            auto line = QString("unknown %2 0 unknown").arg(pid).toStdString();
-            if (std::regex_match(line, match, re)) {
-                auto rec = LogcatProcessInfo_t {
-                    line,
-                    {match.position(1), match.length(1)},
-                    {match.position(2), match.length(2)},
-                    {match.position(3), match.length(3)},
-                    {match.position(4), match.length(4)}
-                };
-                logcat_proc_list_.emplace(pid, rec);
-            }
+            auto [rec, match] = parse_data(QString("unknown %2 0 unknown").arg(pid).toStdString(), re);
+            logcat_proc_list_.emplace(pid, rec);
         }
     }
 }
