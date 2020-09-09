@@ -50,8 +50,8 @@ MainWindow::~MainWindow()
 
 
 static const auto app_name_str = QStringLiteral("qLogcat");
-static const auto app_pos_str = QStringLiteral("pos");
-static const auto app_size_str = QStringLiteral("size");
+static const auto win_geometry_str = QStringLiteral("win_geometry");
+static const auto win_maximized_str = QStringLiteral("win_maximized");
 static const auto log_autoscroll_str = QStringLiteral("log_autoscroll");
 static const auto log_col_width_str = QStringLiteral("log_column_widths");
 
@@ -61,8 +61,8 @@ void MainWindow::loadSettings()
     auto s = QSettings(QSettings::IniFormat, QSettings::UserScope, app_name_str, app_name_str);
 
     s.beginGroup(QStringLiteral("MainWindow"));
-    move(s.value(app_pos_str, QPoint(200, 200)).toPoint());
-    resize(s.value(app_size_str, QSize(800, 600)).toSize());
+    restoreGeometry(s.value(win_geometry_str).toByteArray());
+    if (s.value(win_maximized_str).toBool()) { showMaximized(); }
     ui->autoscrollFlag->setChecked(s.value(log_autoscroll_str, false).toBool());
     ui->tableView->horizontalHeader()->restoreState(s.value(log_col_width_str).toByteArray());
     s.endGroup();
@@ -74,8 +74,8 @@ void MainWindow::saveSettings() const
     auto s = QSettings(QSettings::IniFormat, QSettings::UserScope, app_name_str, app_name_str);
 
     s.beginGroup(QStringLiteral("MainWindow"));
-    s.setValue(app_pos_str, pos());
-    s.setValue(app_size_str, size());
+    s.setValue(win_geometry_str, saveGeometry());
+    s.setValue(win_maximized_str, isMaximized());
     s.setValue(log_autoscroll_str, ui->autoscrollFlag->isChecked());
     s.setValue(log_col_width_str, ui->tableView->horizontalHeader()->saveState());
     s.endGroup();
