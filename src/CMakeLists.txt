@@ -61,6 +61,13 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE Qt${QT_VERSION_MAJOR}::Widgets
 )
 
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        WIN32_EXECUTABLE TRUE
+    )
+endif()
+
+
 if(NOT (ANDROID OR IOS))
     # To allow app running from IDE
     file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/qt.conf "[Paths]\nPrefix = ${QT_ROOT_DIR}\n")
@@ -68,12 +75,12 @@ endif()
 
 
 if(NOT (ANDROID OR IOS))
-    get_filename_component(MY_INSTALL_DIR "${CMAKE_SOURCE_DIR}/../Install" ABSOLUTE CACHE)
+    get_filename_component(MY_INSTALL_DIR "${CMAKE_SOURCE_DIR}/../install" ABSOLUTE CACHE)
     set(CMAKE_INSTALL_PREFIX ${MY_INSTALL_DIR} CACHE PATH "" FORCE)
     include(GNUInstallDirs)
     install(TARGETS ${PROJECT_NAME})
 endif()
 
 if(WIN32)
-    install(CODE "execute_process(COMMAND \"${QT_BIN_DIR}/windeployqt.exe\" --dir \"${CMAKE_INSTALL_BINDIR}\" \"$<TARGET_FILE:${PROJECT_NAME}>\")")
+    install(CODE "execute_process(COMMAND \"${QT_BIN_DIR}/windeployqt.exe\" --dir \"${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}\" \"$<TARGET_FILE:${PROJECT_NAME}>\")")
 endif()
